@@ -1,17 +1,28 @@
-<!-- App.vue -->
+<!-- src/App.vue -->
 <template>
   <div id="app">
-    <GameStore />
+    <NavBar />
+    <router-view class="main-content" />
   </div>
 </template>
 
 <script lang="ts">
 import { defineComponent } from 'vue';
-import GameStore from './components/GameStore.vue';
+import NavBar from '@/components/NavBar.vue';
 
 export default defineComponent({
-  components: {
-    GameStore
-  }
+  components: { NavBar }
 });
 </script>
+
+<style>
+#app {
+  min-height: 100vh;
+}
+
+.main-content {
+  max-width: 1200px;
+  margin: 2rem auto;
+  padding: 0 2rem;
+}
+</style>

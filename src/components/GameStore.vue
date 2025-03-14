@@ -2,6 +2,7 @@
   <div class="game-store">
     <header>
       <h1>Vyrn</h1>
+
       <div class="search-container">
         <input v-model="searchQuery" placeholder="Search games..." />
         <select v-model="selectedGenre">
@@ -23,19 +24,19 @@
         </div>
 
         <div class="game-image">
-          <img :src="game.image" :alt="game.title" />
+          <img :src="game.imageUrl" :alt="game.title" />
         </div>
 
         <div class="game-info">
           <h3>{{ game.title }}</h3>
-          <div class="game-details">
 
+          <div class="game-details">
             <div class="price-container">
               <span v-if="game.discountPercentage" class="original-price">
-                ${{ game.originalPrice }}
+                ${{ game.originalPrice.toFixed(2) }}
               </span>
-              <span class="current-price">
-                ${{ discountedPrice(game) }}
+              <span class="current-price" :class="{ 'free': isFree(game) }">
+                {{ formattedPrice(game) }}
               </span>
             </div>
 
@@ -63,17 +64,9 @@
 </template>
 
 <script lang="ts">
-import { defineComponent, ref, computed } from 'vue';
-
-interface Game {
-  id: number;
-  title: string;
-  originalPrice: number;
-  discountPercentage?: number;
-  genres: string[];
-  platform: string;
-  image: string;
-}
+import { defineComponent, ref, computed, onMounted } from 'vue';
+import GameService from '@/services/GameService';
+import type { Game } from '@/types';
 
 export default defineComponent({
   name: 'GameStore',
@@ -87,9 +80,21 @@ export default defineComponent({
       return genres.join(', ');
     };
 
-    const formatPrice = (price: number) => {
+    const formattedPrice = (game: Game) => {
+      const price = game.discountPercentage
+        ? game.originalPrice * (1 - game.discountPercentage / 100)
+        : game.originalPrice;
 
-    }
+      if (price <= 0) return "Free";
+      return `$${price.toFixed(2)}`;
+    };
+
+    const isFree = (game: Game) => {
+      const price = game.discountPercentage
+        ? game.originalPrice * (1 - game.discountPercentage / 100)
+        : game.originalPrice;
+      return price <= 0;
+    };
 
     const discountedPrice = (game: Game) => {
       if (game.discountPercentage) {
@@ -100,27 +105,22 @@ export default defineComponent({
 
     // TODO:
     // Mock data - replace with API call
-    const games = ref<Game[]>([
-      {
-        id: 1,
-        title: 'Minecraft',
-        originalPrice: 20.99,
-        discountPercentage: 20, // optional
-        genres: ['Sandbox', 'Adventure'],
-        platform: 'PC',
-        image: 'src/assets/imgs/minecraft.jpg'
-      },
-      {
-        id: 2,
-        title: 'Team Fortress 2',
-        originalPrice: 0,
-        genres: ['Action', 'Shooter'],
-        platform: 'PC',
-        image: 'src/assets/imgs/tf2.jpg'
-      },
-      // Add more games...
-    ]);
+    const games = ref<Game[]>([]);
+    const isLoading = ref(true);
+    const error = ref<string | null>(null);
 
+    console.log(GameService.getGames())
+
+    onMounted(async () => {
+      try {
+        games.value = await GameService.getGames();
+      } catch (err) {
+        error.value = 'Failed to load games. Please try again later.';
+        console.error(err);
+      } finally {
+        isLoading.value = false;
+      }
+    });
 
     const genres = computed(() => {
       const allGenres = games.value.flatMap(game => game.genres);
@@ -139,7 +139,7 @@ export default defineComponent({
     });
 
     const cartTotal = computed(() =>
-      cartItems.value.reduce((sum, item) => sum + item.originalPrice, 0).toFixed(2)
+      cartItems.value.reduce((sum, item) => sum + item.originalPrice * (item.discountPercentage ?? 0), 0).toFixed(2)
     );
 
     const addToCart = (game: Game) => {
@@ -165,7 +165,9 @@ export default defineComponent({
       cartTotal,
       addToCart,
       removeFromCart,
-      discountedPrice
+      discountedPrice,
+      formattedPrice,
+      isFree
     };
   }
 });
@@ -301,10 +303,18 @@ export default defineComponent({
   z-index: 2;
 }
 
+.current-price.free {
+  color: #3b82f6;
+  /* Blue color for "Free" text */
+  font-weight: 700;
+}
+
 .price-container {
   display: flex;
-  align-items: center;
+  align-items: baseline;
   gap: 8px;
+  min-height: 24px;
+  /* Prevent layout shift */
 }
 
 .original-price {
