@@ -12,7 +12,7 @@
 
 <script lang="ts">
 import { defineComponent } from 'vue';
-import { RouteLocationRaw } from 'vue-router';
+import type { RouteLocationRaw } from 'vue-router';
 
 interface NavLink {
   name: string;
